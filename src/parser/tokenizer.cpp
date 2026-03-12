@@ -1,6 +1,7 @@
 #include "parser/tokenizer.h"
 #include "core/errors.h"
 #include <cctype>
+#include <optional>
 
 Tokenizer::Tokenizer(const std::string& input)
     : m_input(input), m_pos(0) {}
@@ -84,34 +85,43 @@ Token Tokenizer::next() {
     }
 
     if (c == '>') {
+        std::size_t startPos = m_pos;
         m_pos++;
-        // БАГ: проверяем следующий символ ДО инкремента позиции
         if (m_pos < m_input.size() && m_input[m_pos] == '=') {
             m_pos++;
-            return Token(TokenType::GreaterEqual, ">=", m_pos - 2);
+            return Token(TokenType::GreaterEqual, ">=", startPos);
         }
-        return Token(TokenType::Greater, ">", m_pos - 1);
+        return Token(TokenType::Greater, ">", startPos);
     }
 
     if (c == '<') {
+        std::size_t startPos = m_pos;
         m_pos++;
         if (m_pos < m_input.size() && m_input[m_pos] == '=') {
             m_pos++;
-            return Token(TokenType::LessEqual, "<=", m_pos - 2);
+            return Token(TokenType::LessEqual, "<=", startPos);
         }
-        return Token(TokenType::Less, "<", m_pos - 1);
+        return Token(TokenType::Less, "<", startPos);
     }
 
+    std::size_t startPos = m_pos;
     m_pos++;
 
-    if (c == '+') return Token(TokenType::Plus, "+", m_pos - 1);
-    if (c == '-') return Token(TokenType::Minus, "-", m_pos - 1);
-    if (c == '*') return Token(TokenType::Star, "*", m_pos - 1);
-    if (c == '/') return Token(TokenType::Slash, "/", m_pos - 1);
-    if (c == '^') return Token(TokenType::Caret, "^", m_pos - 1);
-    if (c == '(') return Token(TokenType::LParen, "(", m_pos - 1);
-    if (c == ')') return Token(TokenType::RParen, ")", m_pos - 1);
-    if (c == ',') return Token(TokenType::Comma, ",", m_pos - 1);
+    if (c == '+') return Token(TokenType::Plus, "+", startPos);
+    if (c == '-') return Token(TokenType::Minus, "-", startPos);
+    if (c == '*') return Token(TokenType::Star, "*", startPos);
+    if (c == '/') return Token(TokenType::Slash, "/", startPos);
+    if (c == '^') return Token(TokenType::Caret, "^", startPos);
+    if (c == '(') return Token(TokenType::LParen, "(", startPos);
+    if (c == ')') return Token(TokenType::RParen, ")", startPos);
+    if (c == ',') return Token(TokenType::Comma, ",", startPos);
 
-    throw UnexpectedTokenError(std::string(1, c), m_pos - 1);
+    throw UnexpectedTokenError(std::string(1, c), startPos);
+}
+
+std::optional<Token> Tokenizer::peek() {
+    std::size_t saved = m_pos;
+    Token t = next();
+    m_pos = saved;
+    return t;
 }
