@@ -2,6 +2,7 @@
 #include "core/errors.h"
 #include <cctype>
 #include <optional>
+#include <vector>
 
 Tokenizer::Tokenizer(const std::string& input)
     : m_input(input), m_pos(0) {}
@@ -116,12 +117,42 @@ Token Tokenizer::next() {
     if (c == ')') return Token(TokenType::RParen, ")", startPos);
     if (c == ',') return Token(TokenType::Comma, ",", startPos);
 
-    throw UnexpectedTokenError(std::string(1, c), startPos);
+    std::string badChar = "";
+    badChar += c;
+    throw UnexpectedTokenError(badChar, startPos);
 }
 
 std::optional<Token> Tokenizer::peek() {
     std::size_t saved = m_pos;
-    Token t = next();
-    m_pos = saved;
-    return t;
+    try {
+        Token t = next();
+        m_pos = saved;
+        return t;
+    } catch (...) {
+        m_pos = saved;
+        return std::nullopt;
+    }
+}
+
+bool Tokenizer::hasMore() const {
+    std::size_t tmp = m_pos;
+    while (tmp < m_input.size()) {
+        char c = m_input[tmp];
+        if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
+            tmp++;
+        } else {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::vector<Token> Tokenizer::tokenizeAll() {
+    std::vector<Token> result;
+    while (hasMore()) {
+        Token t = next();
+        result.push_back(std::move(t));
+    }
+    result.push_back(Token(TokenType::EndOfInput, "", m_pos));
+    return result;
 }
