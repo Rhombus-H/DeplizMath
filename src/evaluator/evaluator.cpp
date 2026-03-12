@@ -151,3 +151,71 @@ bool Evaluator::satisfies(const ParsedInequality& ineq, double x, double y) {
 
     return false; // should not happen, just in case
 }
+
+bool Evaluator::isDiscontinuity(double y_prev, double y_curr, double rangeY) {
+    // NaN or Inf = discontinuity
+    if (std::isnan(y_prev)) return true;
+    if (std::isnan(y_curr)) return true;
+    if (std::isinf(y_prev)) return true;
+    if (std::isinf(y_curr)) return true;
+
+    // large jump = discontinuity
+    double diff = std::abs(y_curr - y_prev);
+    double threshold = rangeY * 5.0;
+    if (diff > threshold) {
+        return true;
+    }
+
+    return false;
+}
+
+double Evaluator::niceStep(double range) {
+    if (range <= 0.0) return 1.0;
+
+    // finding approx. step (divide in 10 parts)
+    double roughStep = range / 10.0;
+
+    // order of magnitude
+    double exponent = std::floor(std::log10(roughStep));
+    double magnitude = std::pow(10.0, exponent);
+
+    // normalization
+    double normalized = roughStep / magnitude;
+
+    // picking a nice number
+    double niceNorm = 10.0;
+    if (normalized <= 1.0) niceNorm = 1.0;
+    else if (normalized <= 2.0) niceNorm = 2.0;
+    else if (normalized <= 5.0) niceNorm = 5.0;
+    // else 10.0 (by default)
+
+    double finalStep = niceNorm * magnitude;
+    return finalStep;
+}
+
+// recursively check whether there is a variable in the expression
+bool Evaluator::containsVar(const ExprNode& node, const std::string& varName) {
+    bool found = std::visit([&](const auto& data) -> bool {
+        using T = std::decay_t<decltype(data)>;
+
+        if constexpr (std::is_same_v<T, NumberLit>) {
+            return false;
+        } else if constexpr (std::is_same_v<T, VariableLit>) {
+            return data.name == varName;
+        } else if constexpr (std::is_same_v<T, BinaryOp>) {
+            bool inLeft = containsVar(*data.left, varName);
+            bool inRight = containsVar(*data.right, varName);
+            return inLeft || inRight;
+        } else if constexpr (std::is_same_v<T, UnaryOp>) {
+            return containsVar(*data.operand, varName);
+        } else if constexpr (std::is_same_v<T, FuncCall>) {
+            for (std::size_t i = 0; i < data.args.size(); i++) {
+                if (containsVar(*data.args[i], varName)) return true;
+            }
+            return false;
+        }
+        return false;
+    }, node.data);
+
+    return found;
+}
