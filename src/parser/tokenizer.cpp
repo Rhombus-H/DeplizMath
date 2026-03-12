@@ -1,6 +1,8 @@
 #include "parser/tokenizer.h"
 #include "core/errors.h"
 #include <cctype>
+#include <optional>
+#include <vector>
 
 Tokenizer::Tokenizer(const std::string& input)
     : m_input(input), m_pos(0) {}
@@ -25,6 +27,9 @@ Token Tokenizer::readNumber() {
 
     if (m_pos < m_input.size() && m_input[m_pos] == '.') {
         m_pos++;
+        while (m_pos < m_input.size() && m_input[m_pos] >= '0' && m_input[m_pos] <= '9') {
+            m_pos++;
+        }
     }
 
     std::string numStr = m_input.substr(start, m_pos - start);
@@ -64,18 +69,90 @@ Token Tokenizer::next() {
         return readNumber();
     }
 
+    if (c == '.' && m_pos + 1 < m_input.size()) {
+        char nextCh = m_input[m_pos + 1];
+        if (nextCh >= '0' && nextCh <= '9') {
+            return readNumber();
+        }
+    }
+
     if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_') {
         return readIdentifier();
     }
 
+    if (c == '=') {
+        m_pos++;
+        return Token(TokenType::Equal, "=", m_pos - 1);
+    }
+
+    if (c == '>') {
+        std::size_t startPos = m_pos;
+        m_pos++;
+        if (m_pos < m_input.size() && m_input[m_pos] == '=') {
+            m_pos++;
+            return Token(TokenType::GreaterEqual, ">=", startPos);
+        }
+        return Token(TokenType::Greater, ">", startPos);
+    }
+
+    if (c == '<') {
+        std::size_t startPos = m_pos;
+        m_pos++;
+        if (m_pos < m_input.size() && m_input[m_pos] == '=') {
+            m_pos++;
+            return Token(TokenType::LessEqual, "<=", startPos);
+        }
+        return Token(TokenType::Less, "<", startPos);
+    }
+
+    std::size_t startPos = m_pos;
     m_pos++;
 
-    if (c == '+') return Token(TokenType::Plus, "+", m_pos - 1);
-    if (c == '-') return Token(TokenType::Minus, "-", m_pos - 1);
-    if (c == '*') return Token(TokenType::Star, "*", m_pos - 1);
-    if (c == '/') return Token(TokenType::Slash, "/", m_pos - 1);
-    if (c == '(') return Token(TokenType::LParen, "(", m_pos - 1);
-    if (c == ')') return Token(TokenType::RParen, ")", m_pos - 1);
+    if (c == '+') return Token(TokenType::Plus, "+", startPos);
+    if (c == '-') return Token(TokenType::Minus, "-", startPos);
+    if (c == '*') return Token(TokenType::Star, "*", startPos);
+    if (c == '/') return Token(TokenType::Slash, "/", startPos);
+    if (c == '^') return Token(TokenType::Caret, "^", startPos);
+    if (c == '(') return Token(TokenType::LParen, "(", startPos);
+    if (c == ')') return Token(TokenType::RParen, ")", startPos);
+    if (c == ',') return Token(TokenType::Comma, ",", startPos);
 
-    throw UnexpectedTokenError(std::string(1, c), m_pos - 1);
+    std::string badChar = "";
+    badChar += c;
+    throw UnexpectedTokenError(badChar, startPos);
+}
+
+std::optional<Token> Tokenizer::peek() {
+    std::size_t saved = m_pos;
+    try {
+        Token t = next();
+        m_pos = saved;
+        return t;
+    } catch (...) {
+        m_pos = saved;
+        return std::nullopt;
+    }
+}
+
+bool Tokenizer::hasMore() const {
+    std::size_t tmp = m_pos;
+    while (tmp < m_input.size()) {
+        char c = m_input[tmp];
+        if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
+            tmp++;
+        } else {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::vector<Token> Tokenizer::tokenizeAll() {
+    std::vector<Token> result;
+    while (hasMore()) {
+        Token t = next();
+        result.push_back(std::move(t));
+    }
+    result.push_back(Token(TokenType::EndOfInput, "", m_pos));
+    return result;
 }
