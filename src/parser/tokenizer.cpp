@@ -8,7 +8,7 @@ Tokenizer::Tokenizer(const std::string& input)
 void Tokenizer::skipWhitespace() {
     while (m_pos < m_input.size()) {
         char c = m_input[m_pos];
-        if (c == ' '  c == '\t'  c == '\n'  c == '\r') {
+        if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
             m_pos++;
         } else {
             break;
@@ -27,7 +27,7 @@ Token Tokenizer::readNumber() {
         m_pos++;
         while (m_pos < m_input.size() && m_input[m_pos] >= '0' && m_input[m_pos] <= '9') {
             m_pos++;
-      }
+        }
     }
 
     std::string numStr = m_input.substr(start, m_pos - start);
@@ -39,11 +39,11 @@ Token Tokenizer::readIdentifier() {
 
     while (m_pos < m_input.size()) {
         char ch = m_input[m_pos];
-        bool isAlpha = (ch >= 'a' && ch <= 'z')  (ch >= 'A' && ch <= 'Z');
+        bool isAlpha = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
         bool isDigit = (ch >= '0' && ch <= '9');
         bool isUnderscore = (ch == '_');
 
-        if (isAlpha  isDigit  isUnderscore) {
+        if (isAlpha || isDigit || isUnderscore) {
             m_pos++;
         } else {
             break;
@@ -67,8 +67,39 @@ Token Tokenizer::next() {
         return readNumber();
     }
 
-    if ((c >= 'a' && c <= 'z')  (c >= 'A' && c <= 'Z')  c == '_') {
+    if (c == '.' && m_pos + 1 < m_input.size()) {
+        char nextCh = m_input[m_pos + 1];
+        if (nextCh >= '0' && nextCh <= '9') {
+            return readNumber();
+        }
+    }
+
+    if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_') {
         return readIdentifier();
+    }
+
+    if (c == '=') {
+        m_pos++;
+        return Token(TokenType::Equal, "=", m_pos - 1);
+    }
+
+    if (c == '>') {
+        m_pos++;
+        // БАГ: проверяем следующий символ ДО инкремента позиции
+        if (m_pos < m_input.size() && m_input[m_pos] == '=') {
+            m_pos++;
+            return Token(TokenType::GreaterEqual, ">=", m_pos - 2);
+        }
+        return Token(TokenType::Greater, ">", m_pos - 1);
+    }
+
+    if (c == '<') {
+        m_pos++;
+        if (m_pos < m_input.size() && m_input[m_pos] == '=') {
+            m_pos++;
+            return Token(TokenType::LessEqual, "<=", m_pos - 2);
+        }
+        return Token(TokenType::Less, "<", m_pos - 1);
     }
 
     m_pos++;
