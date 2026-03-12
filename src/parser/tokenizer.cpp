@@ -19,18 +19,36 @@ void Tokenizer::skipWhitespace() {
 Token Tokenizer::readNumber() {
     std::size_t start = m_pos;
 
-    // БАГ: не обрабатываем дробную часть правильно
     while (m_pos < m_input.size() && m_input[m_pos] >= '0' && m_input[m_pos] <= '9') {
         m_pos++;
     }
 
-    // пробуем обработать точку (но с багом)
     if (m_pos < m_input.size() && m_input[m_pos] == '.') {
         m_pos++;
     }
 
     std::string numStr = m_input.substr(start, m_pos - start);
     return Token(TokenType::Number, numStr, start);
+}
+
+Token Tokenizer::readIdentifier() {
+    std::size_t start = m_pos;
+
+    while (m_pos < m_input.size()) {
+        char ch = m_input[m_pos];
+        bool isAlpha = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
+        bool isDigit = (ch >= '0' && ch <= '9');
+        bool isUnderscore = (ch == '_');
+
+        if (isAlpha || isDigit || isUnderscore) {
+            m_pos++;
+        } else {
+            break;
+        }
+    }
+
+    std::string identStr = m_input.substr(start, m_pos - start);
+    return Token(TokenType::Identifier, identStr, start);
 }
 
 Token Tokenizer::next() {
@@ -46,12 +64,18 @@ Token Tokenizer::next() {
         return readNumber();
     }
 
+    if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_') {
+        return readIdentifier();
+    }
+
     m_pos++;
 
     if (c == '+') return Token(TokenType::Plus, "+", m_pos - 1);
     if (c == '-') return Token(TokenType::Minus, "-", m_pos - 1);
     if (c == '*') return Token(TokenType::Star, "*", m_pos - 1);
     if (c == '/') return Token(TokenType::Slash, "/", m_pos - 1);
+    if (c == '(') return Token(TokenType::LParen, "(", m_pos - 1);
+    if (c == ')') return Token(TokenType::RParen, ")", m_pos - 1);
 
-    return Token(TokenType::Unknown, std::string(1, c), m_pos - 1);
+    throw UnexpectedTokenError(std::string(1, c), m_pos - 1);
 }
