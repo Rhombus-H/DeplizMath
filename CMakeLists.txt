@@ -60,8 +60,6 @@ FetchContent_MakeAvailable(googletest)
 add_library(implot_lib STATIC
         ${implot_content_SOURCE_DIR}/implot.cpp
         ${implot_content_SOURCE_DIR}/implot_items.cpp
-        include/evaluator/evaluator.h
-        include/evaluator/derivative.h
 )
 target_include_directories(implot_lib PUBLIC ${implot_content_SOURCE_DIR})
 target_include_directories(implot_lib PUBLIC ${imgui_SOURCE_DIR})
