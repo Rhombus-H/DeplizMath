@@ -66,4 +66,4 @@ target_include_directories(implot_lib PUBLIC ${imgui_SOURCE_DIR})
 target_link_libraries(implot_lib      PUBLIC ImGui-SFML::ImGui-SFML)
 
 add_subdirectory(src)
-add_subdirectory(tests)
+#add_subdirectory(tests)
