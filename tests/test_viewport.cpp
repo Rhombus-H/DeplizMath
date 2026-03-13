@@ -69,3 +69,25 @@ TEST(ViewportTest, Pan) {
     EXPECT_NEAR(v.getYMin(), -7.0, 1e-10);
     EXPECT_NEAR(v.getYMax(), 13.0, 1e-10);
 }
+
+TEST(ViewportTest, Reset) {
+    Viewport v(-10, 10, -10, 10);
+    v.zoom(0.5, 0.0, 0.0);
+    v.pan(5.0, 3.0);
+    v.reset();
+    EXPECT_DOUBLE_EQ(v.getXMin(), -10.0);
+    EXPECT_DOUBLE_EQ(v.getXMax(),  10.0);
+}
+
+TEST(ViewportTest, GridStep) {
+    Viewport v(-10, 10, -10, 10);
+    double stepX = v.gridStepX();
+    EXPECT_TRUE(stepX > 0);
+    EXPECT_TRUE(stepX == 1.0 || stepX == 2.0 || stepX == 5.0);
+}
+
+TEST(ViewportTest, RangeCalculation) {
+    Viewport v(-5, 15, -3, 7);
+    EXPECT_DOUBLE_EQ(v.getRangeX(), 20.0);
+    EXPECT_DOUBLE_EQ(v.getRangeY(), 10.0);
+}
