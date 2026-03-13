@@ -1,6 +1,7 @@
 enable_testing()
 
 add_executable(DeplizMathTests
+        test_viewport.cpp
 )
 
 target_link_libraries(DeplizMathTests PRIVATE
