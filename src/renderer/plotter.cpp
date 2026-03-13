@@ -104,8 +104,157 @@ void Plotter::drawFunction(const PlotItem& item, std::size_t colorIdx, float plo
 
 void Plotter::drawEquation(const PlotItem& item, std::size_t colorIdx,
                             float plotW, float plotH) {
+    const ParsedEquation& eq = std::get<ParsedEquation>(item.parsed);
+
+    Color col = ColorPalette::getColor(colorIdx);
+    ImU32 drawColor = IM_COL32(col.r, col.g, col.b, 220);
+
+    // marching squares подход: для каждой ячейки проверяем
+    // знак f = lhs - rhs в 4 углах. если знак меняется - рисуем
+    int cellSize = 2; // размер ячейки в пикселях
+    int w = (int)plotW;
+    int h = (int)plotH;
+
+    ImDrawList* drawList = ImPlot::GetPlotDrawList();
+
+    double totalRangeX = viewport->getRangeX();
+    double totalRangeY = viewport->getRangeY();
+
+    // dx и dy - размер ячейки в мат координатах
+    double dx = (double)cellSize * totalRangeX / plotW;
+    double dy = (double)cellSize * totalRangeY / plotH;
+
+    for (int screenY = 0; screenY < h; screenY += cellSize) {
+        for (int screenX = 0; screenX < w; screenX += cellSize) {
+            // координаты углов ячейки
+            double mx = viewport->screenToMathX(screenX, plotW);
+            double my = viewport->screenToMathY(screenY, plotH);
+
+            // f = lhs - rhs в четырех углах
+            double f00 = Evaluator::evaluate(*eq.lhs, mx, my) - Evaluator::evaluate(*eq.rhs, mx, my);
+            double f10 = Evaluator::evaluate(*eq.lhs, mx + dx, my) - Evaluator::evaluate(*eq.rhs, mx + dx, my);
+            double f01 = Evaluator::evaluate(*eq.lhs, mx, my - dy) - Evaluator::evaluate(*eq.rhs, mx, my - dy);
+            double f11 = Evaluator::evaluate(*eq.lhs, mx + dx, my - dy) - Evaluator::evaluate(*eq.rhs, mx + dx, my - dy);
+
+            // если какой-то NaN - пропускаем
+            if (std::isnan(f00) || std::isnan(f10) || std::isnan(f01) || std::isnan(f11)) {
+                continue;
+            }
+
+            // проверяем: все ли одного знака?
+            bool allPositive = (f00 > 0) && (f10 > 0) && (f01 > 0) && (f11 > 0);
+            bool allNegative = (f00 < 0) && (f10 < 0) && (f01 < 0) && (f11 < 0);
+
+            if (!allPositive && !allNegative) {
+                // знак меняется - кривая проходит через эту ячейку
+                ImVec2 pMin = ImPlot::PlotToPixels(mx, my);
+                ImVec2 pMax = ImPlot::PlotToPixels(mx + dx, my - dy);
+                drawList->AddRectFilled(pMin, pMax, drawColor);
+            }
+        }
+    }
 }
 
 void Plotter::drawInequality(const PlotItem& item, std::size_t colorIdx,
                               float plotW, float plotH) {
+    const ParsedInequality& ineq = std::get<ParsedInequality>(item.parsed);
+
+    Color fillCol = ColorPalette::withAlpha(colorIdx, 60);
+    ImU32 fillColor = IM_COL32(fillCol.r, fillCol.g, fillCol.b, fillCol.a);
+
+    int stepSize = 4;
+    int w = (int)plotW;
+    int h = (int)plotH;
+
+    ImDrawList* drawList = ImPlot::GetPlotDrawList();
+
+    double totalRangeX = viewport->getRangeX();
+    double totalRangeY = viewport->getRangeY();
+
+    for (int screenY = 0; screenY < h; screenY += stepSize) {
+        for (int screenX = 0; screenX < w; screenX += stepSize) {
+            double mathX = viewport->screenToMathX(screenX + stepSize / 2.0, plotW);
+            double mathY = viewport->screenToMathY(screenY + stepSize / 2.0, plotH);
+
+            bool sat = Evaluator::satisfies(ineq, mathX, mathY);
+            if (sat) {
+                double halfW = (double)stepSize * totalRangeX / plotW / 2.0;
+                double halfH = (double)stepSize * totalRangeY / plotH / 2.0;
+
+                ImVec2 pMin = ImPlot::PlotToPixels(mathX - halfW, mathY + halfH);
+                ImVec2 pMax = ImPlot::PlotToPixels(mathX + halfW, mathY - halfH);
+                drawList->AddRectFilled(pMin, pMax, fillColor);
+            }
+        }
+    }
+
+    // граничная линия для простых неравенств (y > f(x))
+    if (!ineq.twoVariable) {
+        int numPoints = (int)(plotW) * 2;
+        if (numPoints < 100) numPoints = 100;
+
+        double xMin = viewport->getXMin();
+        double xMax = viewport->getXMax();
+        double rangeY = viewport->getRangeY();
+        double xStep = (xMax - xMin) / (double)(numPoints - 1);
+
+        // сегменты
+        std::vector<std::vector<double>> segXs;
+        std::vector<std::vector<double>> segYs;
+        std::vector<double> curX;
+        std::vector<double> curY;
+        double prevY = std::numeric_limits<double>::quiet_NaN();
+
+        for (int i = 0; i < numPoints; i++) {
+            double x = xMin + i * xStep;
+            double y = Evaluator::evaluate(*ineq.rhs, x);
+
+            if (std::isnan(y) || std::isinf(y)) {
+                if (curX.size() > 0) {
+                    segXs.push_back(curX);
+                    segYs.push_back(curY);
+                    curX.clear();
+                    curY.clear();
+                }
+                prevY = std::numeric_limits<double>::quiet_NaN();
+                continue;
+            }
+
+            if (Evaluator::isDiscontinuity(prevY, y, rangeY)) {
+                if (curX.size() > 0) {
+                    segXs.push_back(curX);
+                    segYs.push_back(curY);
+                    curX.clear();
+                    curY.clear();
+                }
+            }
+
+            curX.push_back(x);
+            curY.push_back(y);
+            prevY = y;
+        }
+
+        if (curX.size() > 0) {
+            segXs.push_back(curX);
+            segYs.push_back(curY);
+        }
+
+        Color lineCol = ColorPalette::getColor(colorIdx);
+        ImVec4 lineColor(lineCol.r / 255.0f, lineCol.g / 255.0f,
+                         lineCol.b / 255.0f, 1.0f);
+
+        for (std::size_t s = 0; s < segXs.size(); s++) {
+            std::string label = "##boundary_" + std::to_string(s) + "_" + item.expression;
+
+            float thickness = 2.0f;
+            if (ineq.op == CompareOp::Greater || ineq.op == CompareOp::Less) {
+                thickness = 1.5f;
+            }
+
+            ImPlot::SetNextLineStyle(lineColor, thickness);
+            ImPlot::PlotLine(label.c_str(),
+                             segXs[s].data(), segYs[s].data(),
+                             (int)segXs[s].size());
+        }
+    }
 }
