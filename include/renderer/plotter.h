@@ -14,7 +14,12 @@ public:
     Plotter& operator=(Plotter&&) noexcept = default;
     ~Plotter() = default;
 
+    void render(const Pipeline& pipeline, float plotW, float plotH);
 private:
     std::shared_ptr<Viewport> viewport;
+
+    void drawFunction(const PlotItem& item, std::size_t colorIdx, float plotW);
+    void drawEquation(const PlotItem& item, std::size_t colorIdx, float plotW, float plotH);
+    void drawInequality(const PlotItem& item, std::size_t colorIdx, float plotW, float plotH);
 
 };

@@ -6,8 +6,11 @@
 class GridRenderer {
 public:
     explicit GridRenderer(std::shared_ptr<Viewport> vp);
-    void configure(); // настраивает оси ImPlot перед рисованием
+
+    // forceLimits = true когда пользователь вручную изменил viewport
+    void configure(bool forceLimits);
 
 private:
     std::shared_ptr<Viewport> viewport;
 };
+
