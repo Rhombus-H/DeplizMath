@@ -1,6 +1,8 @@
 #pragma once
 
 #include <memory>
+
+#include "app/pipeline.h"
 #include "renderer/viewport.h"
 
 // рисует графики через ImPlot
