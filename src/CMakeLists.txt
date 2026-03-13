@@ -1,11 +1,15 @@
 add_subdirectory(parser)
 add_subdirectory(renderer)
 add_subdirectory(evaluator)
+add_subdirectory(app)
 
 add_library(deplizmath_lib INTERFACE)
 target_include_directories(deplizmath_lib INTERFACE ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(deplizmath_lib INTERFACE
         deplizmath_parser
+        deplizmath_app
+        deplizmath_evaluator
+        deplizmath_renderer
 )
 
 add_executable(DeplizMath main.cpp)
