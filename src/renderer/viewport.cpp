@@ -1,4 +1,5 @@
 #include "renderer/viewport.h"
+#include "evaluator/evaluator.h"
 
 Viewport::Viewport()
     : xMin(-10.0), xMax(10.0), yMin(-10.0), yMax(10.0),
