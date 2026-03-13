@@ -32,6 +32,7 @@ private:
     std::array<char, 256> inputBuf;
     std::string statusMsg;
     float vpInputs[4]; // xmin, xmax, ymin, ymax
+    bool viewportDirty = true; // true = нужно принудительно обновить лимиты ImPlot
 
     void handleEvents();
     void updateViewport();
