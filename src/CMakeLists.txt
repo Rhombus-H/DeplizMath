@@ -1,4 +1,6 @@
 add_subdirectory(parser)
+add_subdirectory(renderer)
+add_subdirectory(evaluator)
 
 add_library(deplizmath_lib INTERFACE)
 target_include_directories(deplizmath_lib INTERFACE ${PROJECT_SOURCE_DIR}/include)
