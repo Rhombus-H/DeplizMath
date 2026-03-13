@@ -66,3 +66,15 @@ void Viewport::reset() {
     yMax = default_yMax;
 }
 
+double Viewport::gridStepX() const {
+    double range = xMax - xMin;
+    double step = Evaluator::niceStep(range);
+    return step;
+}
+
+double Viewport::gridStepY() const {
+    double range = yMax - yMin;
+    double step = Evaluator::niceStep(range);
+    return step;
+}
+
